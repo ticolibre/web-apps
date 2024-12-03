@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score Card Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h1 class="text-2xl font-bold mb-6 text-center">Score Card Generator</h1>
+        
+        <form id="uploadForm" class="space-y-4">
+            <div>
+                <label for="excel_file" class="block text-sm font-medium text-gray-700">Excel File</label>
+                <input type="file" 
+                       id="excel_file" 
+                       name="excel_file" 
+                       accept=".xlsx,.xls" 
+                       class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                       required>
+            </div>
+
+            <div id="configInputs" class="space-y-4">
+                <div>
+                    <label for="evaluation" class="block text-sm font-medium text-gray-700">Evaluation Period</label>
+                    <input type="text" 
+                           id="evaluation" 
+                           name="evaluation" 
+                           placeholder="e.g., First Quarter 2024"
+                           class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                           required>
+                </div>
+
+                <div>
+                    <label for="professor" class="block text-sm font-medium text-gray-700">Professor Name</label>
+                    <input type="text" 
+                           id="professor" 
+                           name="professor" 
+                           placeholder="Full Name of Professor"
+                           class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                           required>
+                </div>
+
+                <div>
+                    <label for="course" class="block text-sm font-medium text-gray-700">Course Name</label>
+                    <input type="text" 
+                           id="course" 
+                           name="course" 
+                           placeholder="Course Code or Name"
+                           class="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                           required>
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300">
+                    Generate Score Cards
+                </button>
+            </div>
+        </form>
+
+        <div id="loading" class="mt-4 text-center hidden">
+            <p class="text-blue-500">Generating score cards...</p>
+        </div>
+
+        <div id="results" class="mt-4">
+            <!-- Student report results will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loadingElement = document.getElementById('loading');
+            const resultsElement = document.getElementById('results');
+            const submitButton = e.target.querySelector('button');
+
+            // Reset previous state
+            loadingElement.classList.remove('hidden');
+            resultsElement.innerHTML = '';
+            submitButton.disabled = true;
+
+            const formData = new FormData(this);
+
+            try {
+                const response = await axios.post('/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                loadingElement.classList.add('hidden');
+
+                // Create download links for each student report
+                const resultsList = document.createElement('div');
+                resultsList.classList.add('space-y-2');
+                
+                response.data.forEach(report => {
+                    const linkContainer = document.createElement('div');
+                    linkContainer.classList.add('flex', 'justify-between', 'items-center', 'bg-gray-100', 'p-2', 'rounded');
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = report.name;
+                    nameSpan.classList.add('font-medium');
+
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = `/download/${encodeURIComponent(report.filename)}`;
+                    downloadLink.textContent = 'Download';
+                    downloadLink.classList.add(
+                        'bg-green-500', 
+                        'text-white', 
+                        'px-3', 
+                        'py-1', 
+                        'rounded', 
+                        'hover:bg-green-600', 
+                        'transition', 
+                        'duration-300'
+                    );
+
+                    linkContainer.appendChild(nameSpan);
+                    linkContainer.appendChild(downloadLink);
+                    resultsList.appendChild(linkContainer);
+                });
+
+                resultsElement.appendChild(resultsList);
+            } catch (error) {
+                loadingElement.classList.add('hidden');
+                resultsElement.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        Error: ${error.response?.data?.error || 'An unexpected error occurred'}
+                    </div>
+                `;
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
